@@ -38,7 +38,7 @@ def rgb2gray(rgb):
     gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
     return gray 
 
-fileName = 'rgb_geotiff_L1_ua-mac_2017-02-19__12-55-28-265_left.tif' # this will be changed during the computing pipeline
+fileName = 'Sample_Data_RGB.png' # this will be changed during the computing pipeline
 LOG_FILENAME = "LogFile_" + fileName + ".log"
 logging.basicConfig(filename=LOG_FILENAME, level=logging.INFO)
 logging.info('This module estimates image quality using multiscale autocorrelation')
