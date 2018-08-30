@@ -1,0 +1,18 @@
+{
+  "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
+  "name": "terra.stereo-rgb.nrmac",
+  "version": "1.1",
+  "description": "Stereo RGB No-Reference Multiscale Autocorrelation",
+  "author": "Sidike Paheding <sidike.paheding@slu.edu>",
+  "contributors": [],
+  "contexts": [],
+  "repository": {"repType": "git", "repUrl": "https://github.com/terraref/quality-metrics.git"},
+  "process": {
+    "file": [
+      "image/tiff"
+    ]
+  },
+  "external_services": [],
+  "dependencies": [],
+  "bibtex": []
+}
