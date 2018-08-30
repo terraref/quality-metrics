@@ -53,7 +53,7 @@ class RGB_NRMAC(TerrarefExtractor):
         # Tell Clowder this is completed so subsequent file updates don't daisy-chain
         ext_meta = build_metadata(host, self.extractor_info, resource['id'], {
             "quality_score": qual
-        }, 'dataset')
+        }, 'file')
         self.log_info(resource, "uploading extractor metadata")
         upload_metadata(connector, host, secret_key, resource['id'], ext_meta)
 
