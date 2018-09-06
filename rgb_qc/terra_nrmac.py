@@ -15,8 +15,11 @@ from PIL import Image, ImageFilter
 
 from pyclowder.utils import CheckMessage
 from pyclowder.files import download_metadata, upload_metadata
-from terrautils.extractors import TerrarefExtractor, build_metadata
-from terrautils.metadata import get_extractor_metadata
+from pyclowder.datasets import download_metadata as download_ds_metadata
+from terrautils.extractors import TerrarefExtractor, build_metadata, upload_to_dataset
+from terrautils.metadata import get_extractor_metadata, get_terraref_metadata
+from terrautils.formats import create_geotiff
+from terrautils.spatial import geojson_to_tuples
 
 
 class RGB_NRMAC(TerrarefExtractor):
@@ -49,6 +52,17 @@ class RGB_NRMAC(TerrarefExtractor):
 
         self.log_info(resource, "determining image quality")
         qual = self.getImageQuality(f)
+
+        self.log_info(resource, "creating output image")
+        md = download_ds_metadata(connector,host, secret_key, resource['parent']['id'])
+        terramd = get_terraref_metadata(md)
+        if "left" in f:
+            bounds = geojson_to_tuples(terramd['spatial_metadata']['left']['bounding_box'])
+        else:
+            bounds = geojson_to_tuples(terramd['spatial_metadata']['right']['bounding_box'])
+        output = f.replace(".tif", "_nrmac.tif")
+        create_geotiff(np.array([[qual,qual],[qual,qual]]), bounds, output)
+        upload_to_dataset(connector, host, self.clowder_user, self.clowder_pass, resource['parent']['id'], output)
 
         # Tell Clowder this is completed so subsequent file updates don't daisy-chain
         ext_meta = build_metadata(host, self.extractor_info, resource['id'], {
