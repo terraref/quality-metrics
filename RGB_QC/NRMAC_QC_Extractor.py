@@ -24,13 +24,19 @@ def MAC(im1,im2, im): # main function: Multiscale Autocorrelation (MAC)
        im2 = np.matrix.round(rgb2gray(im2))      
     # multiscale parameters
     scales = np.array([2, 3, 5])
-    FM = np.zeros(len(scales))
+    dif = np.zeros(len(scales))
     for s in range(len(scales)):
-        im1[0: h-1,:] = im[1:h,:]
-        im2[0: h-scales[s], :]= im[scales[s]:h,:]
-        dif = im*(im1 - im2)
-        FM[s] = np.mean(dif)
-    NRMAC = np.mean(FM)    
+       # part 1 image
+       f11 = im[0:h-1,:]
+       f12 = im[1:,:]
+       # part 2 image
+       f21 = im[0:h-scales[s],:]
+       f22 = im[scales[s]:,:]
+       f1 = f11*f12;
+       f2 = f21*f22;
+       # sum and compute difference
+       dif[s] = np.sum(f1) - np.sum(f2)
+    NRMAC = np.mean(dif)    
     return NRMAC
 
 def rgb2gray(rgb):
