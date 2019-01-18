@@ -22,6 +22,39 @@ from terrautils.formats import create_geotiff
 from terrautils.spatial import geojson_to_tuples
 
 
+def MAC(self, im): # main function: Multiscale Autocorrelation (MAC)
+    h, v, c = im.shape
+    if c>1:
+        im  = np.matrix.round(rgb2gray(im))
+    # multiscale parameters
+    scales = np.array([2, 3, 5])
+    dif = np.zeros(len(scales))
+    for s in range(len(scales)):
+        # part 1 image
+        f11 = im[0:h-1,:]
+        f12 = im[1:,:]
+        # part 2 image
+        f21 = im[0:h-scales[s],:]
+        f22 = im[scales[s]:,:]
+        f1 = f11*f12
+        f2 = f21*f22
+        # sum and compute difference
+        dif[s] = np.sum(f1) - np.sum(f2)
+    NRMAC = np.mean(dif)
+    return NRMAC
+
+def rgb2gray(self, rgb):
+    r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+    gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
+    return gray
+
+def getImageQuality(self, imgfile):
+    img = Image.open(imgfile)
+    img = np.array(img)
+    NRMAC = MAC(img)
+    return NRMAC
+
+
 class RGB_NRMAC(TerrarefExtractor):
     def __init__(self):
         super(RGB_NRMAC, self).__init__()
@@ -51,7 +84,7 @@ class RGB_NRMAC(TerrarefExtractor):
         f = resource['local_paths'][0]
 
         self.log_info(resource, "determining image quality")
-        qual = self.getImageQuality(f)
+        qual = getImageQuality(f)
 
         self.log_info(resource, "creating output image")
         md = download_ds_metadata(connector,host, secret_key, resource['parent']['id'])
@@ -73,35 +106,7 @@ class RGB_NRMAC(TerrarefExtractor):
 
         self.end_message(resource)
 
-    def MAC(self, im1,im2, im): # main function: Multiscale Autocorrelation (MAC)
-        h, v, c = im1.shape
-        if c>1:
-            im  = np.matrix.round(self.rgb2gray(im))
-            im1 = np.matrix.round(self.rgb2gray(im1))
-            im2 = np.matrix.round(self.rgb2gray(im2))
-            # multiscale parameters
-        scales = np.array([2, 3, 5])
-        FM = np.zeros(len(scales))
-        for s in range(len(scales)):
-            im1[0: h-1,:] = im[1:h,:]
-            im2[0: h-scales[s], :]= im[scales[s]:h,:]
-            dif = im*(im1 - im2)
-            FM[s] = np.mean(dif)
-        NRMAC = np.mean(FM)
-        return NRMAC
 
-    def rgb2gray(self, rgb):
-        r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
-        gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
-        return gray
-
-    def getImageQuality(self, imgfile):
-        img = Image.open(imgfile)
-        img = np.array(img)
-
-        NRMAC = self.MAC(img, img, img)
-
-        return NRMAC
 
 if __name__ == "__main__":
     extractor = RGB_NRMAC()
