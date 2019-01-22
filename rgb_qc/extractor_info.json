@@ -8,8 +8,8 @@
   "contexts": [],
   "repository": {"repType": "git", "repUrl": "https://github.com/terraref/quality-metrics.git"},
   "process": {
-    "file": [
-      "image/tiff"
+    "dataset": [
+      "file.added"
     ]
   },
   "external_services": [],

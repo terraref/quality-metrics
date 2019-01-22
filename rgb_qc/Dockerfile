@@ -2,13 +2,10 @@ FROM terraref/terrautils:1.4
 MAINTAINER Max Burnette <mburnet2@illinois.edu>
 
 # Install any programs needed
-# TODO: Can we remove this user ID and mount files as Max?
-RUN useradd -u 49044 extractor \
-    && apt-get install -y -q gfortran \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /home/extractor/sites/ua-mac/raw_data \
-    && mkdir -p /home/extractor/sites/ua-mac/Level_1/stereoTop_geotiff \
-    && chown -R extractor /home/extractor
+RUN useradd -u 49044 extractor
+
+RUN apt-get install -y -q gfortran \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip install terraref-stereo-rgb
 
