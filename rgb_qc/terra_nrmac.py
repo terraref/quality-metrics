@@ -12,7 +12,9 @@
 import os
 import shutil
 import tempfile
+import cv2
 import numpy as np
+from osgeo import gdal
 from PIL import Image, ImageFilter
 
 from pyclowder.utils import CheckMessage
@@ -24,25 +26,21 @@ from terrautils.formats import create_geotiff
 from terrautils.spatial import geojson_to_tuples
 
 
-def MAC(im): # main function: Multiscale Autocorrelation (MAC)
-    h, v, c = im.shape
+def MAC(im1, im2, im): # main function: Multiscale Autocorrelation (MAC)
+    h, v, c = im1.shape
     if c>1:
         im  = np.matrix.round(rgb2gray(im))
+        im1 = np.matrix.round(rgb2gray(im1))
+        im2 = np.matrix.round(rgb2gray(im2))
     # multiscale parameters
     scales = np.array([2, 3, 5])
-    dif = np.zeros(len(scales))
+    FM = np.zeros(len(scales))
     for s in range(len(scales)):
-        # part 1 image
-        f11 = im[0:h-1,:]
-        f12 = im[1:,:]
-        # part 2 image
-        f21 = im[0:h-scales[s],:]
-        f22 = im[scales[s]:,:]
-        f1 = f11*f12
-        f2 = f21*f22
-        # sum and compute difference
-        dif[s] = np.sum(f1) - np.sum(f2)
-    NRMAC = np.mean(dif)
+        im1[0: h-1,:] = im[1:h,:]
+        im2[0: h-scales[s], :]= im[scales[s]:h,:]
+        dif = im*(im1 - im2)
+        FM[s] = np.mean(dif)
+    NRMAC = np.mean(FM)
     return NRMAC
 
 def rgb2gray(rgb):
@@ -51,9 +49,12 @@ def rgb2gray(rgb):
     return gray
 
 def getImageQuality(imgfile):
-    img = Image.open(imgfile)
-    img = np.array(img)
-    NRMAC = MAC(img)
+    # Some RGB Geotiffs have issues with Image library...
+    #img = Image.open(imgfile)
+    #img = np.array(img)
+    img = np.rollaxis(gdal.Open(imgfile).ReadAsArray().astype(np.uint8), 0, 3)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    NRMAC = MAC(img, img, img)
     return NRMAC
 
 

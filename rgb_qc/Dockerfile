@@ -7,7 +7,17 @@ RUN useradd -u 49044 extractor
 RUN apt-get install -y -q gfortran \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install terraref-stereo-rgb
+RUN pip install terraref-stereo-rgb opencv-python
+
+RUN apt update && apt install -y libsm6 \
+                                libxext6 \
+                                libxrender-dev \
+                                python-matplotlib \
+                                python-numpy \
+                                python-pil \
+                                python-scipy \
+                                build-essential \
+                                cython
 
 # command to run when starting docker
 COPY entrypoint.sh extractor_info.json *.py /home/extractor/
