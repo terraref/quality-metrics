@@ -18,7 +18,7 @@ from osgeo import gdal
 from PIL import Image, ImageFilter
 
 from pyclowder.utils import CheckMessage
-from pyclowder.datasets import download_metadata, upload_metadata, remove_metadata
+from pyclowder.datasets import download_metadata, upload_metadata, remove_metadata, submit_extraction
 from terrautils.extractors import TerrarefExtractor, build_metadata, upload_to_dataset, \
     is_latest_file, contains_required_files, file_exists, load_json_file, check_file_in_dataset
 from terrautils.metadata import get_extractor_metadata, get_terraref_metadata
@@ -88,6 +88,13 @@ class RGB_NRMAC(TerrarefExtractor):
         # Check for a left and right BIN file - skip if not found
         if not contains_required_files(resource, ['_left.tif', '_right.tif']):
             self.log_skip(resource, "missing required files")
+            # Check for raw_data_source in metadata and resumbit to bin2tif if available...
+            md = download_metadata(connector, host, secret_key, resource['id'])
+            terra_md = get_terraref_metadata(md)
+            if 'raw_data_source' in terra_md:
+                raw_id = str(terra_md['raw_data_source'].split("/")[-1])
+                self.log_info(resource, "submitting raw source %s to bin2tif" % raw_id)
+                submit_extraction(connector, host, secret_key, raw_id, "terra.stereo-rgb.bin2tif")
             return CheckMessage.ignore
 
         # Check metadata to verify we have what we need
@@ -100,8 +107,11 @@ class RGB_NRMAC(TerrarefExtractor):
                 right_nrmac_tiff = self.sensors.create_sensor_path(timestamp, opts=['right'])
                 if (self.leftonly and file_exists(left_nrmac_tiff)) or (
                                 not self.leftonly and file_exists(left_nrmac_tiff) and file_exists(right_nrmac_tiff)):
-                    self.log_skip(resource, "metadata v%s and outputs already exist" % self.extractor_info['version'])
-                    return CheckMessage.ignore
+                    if contains_required_files(resource, [os.path.basename(left_nrmac_tiff)]):
+                        self.log_skip(resource, "metadata v%s and outputs already exist" % self.extractor_info['version'])
+                        return CheckMessage.ignore
+                    else:
+                        self.log_info(resource, "output file exists but not yet uploaded")
             # Have TERRA-REF metadata, but not any from this extractor
             return CheckMessage.download
         else:
@@ -139,36 +149,34 @@ class RGB_NRMAC(TerrarefExtractor):
         right_bounds = geojson_to_tuples(terra_md_full['spatial_metadata']['right']['bounding_box'])
 
         if not file_exists(left_nrmac_tiff) or self.overwrite:
-            self.log_info(resource, "creating & uploading %s" % left_nrmac_tiff)
-            out_tmp_mask_left = os.path.join(tempfile.gettempdir(), resource['id'].encode('utf8'))
-            create_geotiff(np.array([[left_qual, left_qual],[left_qual, left_qual]]),
-                           left_bounds, out_tmp_mask_left, None, True, self.extractor_info, terra_md_full)
-            # Rename output.tif after creation to avoid long path errors
-            shutil.move(out_tmp_mask_left, left_nrmac_tiff)
-            found_in_dest = check_file_in_dataset(connector, host, secret_key, target_dsid, left_nrmac_tiff,
-                                                  remove=self.overwrite)
-            if not found_in_dest or self.overwrite:
-                fileid = upload_to_dataset(connector, host, self.clowder_user, self.clowder_pass, target_dsid,
-                                           left_nrmac_tiff)
-                uploaded_file_ids.append(host + ("" if host.endswith("/") else "/") + "files/" + fileid)
+            self.log_info(resource, "creating %s" % left_nrmac_tiff)
+            create_geotiff(np.array([[left_qual, left_qual],[left_qual, left_qual]]), left_bounds,
+                           left_nrmac_tiff, None, True, self.extractor_info, terra_md_full, compress=True)
             self.created += 1
             self.bytes += os.path.getsize(left_nrmac_tiff)
+        found_in_dest = check_file_in_dataset(connector, host, secret_key, target_dsid, left_nrmac_tiff,
+                                              remove=self.overwrite)
+        if not found_in_dest or self.overwrite:
+            self.log_info(resource, "uploading %s" % left_nrmac_tiff)
+            fileid = upload_to_dataset(connector, host, self.clowder_user, self.clowder_pass, target_dsid,
+                                       left_nrmac_tiff)
+            uploaded_file_ids.append(host + ("" if host.endswith("/") else "/") + "files/" + fileid)
 
-        if not self.leftonly and (not file_exists(right_nrmac_tiff) or self.overwrite):
-            self.log_info(resource, "creating & uploading %s" % right_nrmac_tiff)
-            out_tmp_mask_right = os.path.join(tempfile.gettempdir(), resource['id'].encode('utf8'))
-            create_geotiff(np.array([[right_qual, right_qual],[right_qual, right_qual]]),
-                           right_bounds, out_tmp_mask_right, None, True, self.extractor_info, terra_md_full)
-            # Rename output.tif after creation to avoid long path errors
-            shutil.move(out_tmp_mask_right, right_nrmac_tiff)
+
+        if not self.leftonly:
+            if (not file_exists(right_nrmac_tiff) or self.overwrite):
+                self.log_info(resource, "creating %s" % right_nrmac_tiff)
+                create_geotiff(np.array([[right_qual, right_qual],[right_qual, right_qual]]), right_bounds,
+                               right_nrmac_tiff, None, True, self.extractor_info, terra_md_full, compress=True)
+                self.created += 1
+                self.bytes += os.path.getsize(right_nrmac_tiff)
             found_in_dest = check_file_in_dataset(connector, host, secret_key, target_dsid, right_nrmac_tiff,
                                                   remove=self.overwrite)
             if not found_in_dest or self.overwrite:
+                self.log_info(resource, "uploading %s" % right_nrmac_tiff)
                 fileid = upload_to_dataset(connector, host, self.clowder_user, self.clowder_pass, target_dsid,
                                            right_nrmac_tiff)
                 uploaded_file_ids.append(host + ("" if host.endswith("/") else "/") + "files/" + fileid)
-            self.created += 1
-            self.bytes += os.path.getsize(right_nrmac_tiff)
 
         # Tell Clowder this is completed so subsequent file updates don't daisy-chain
         md = {
