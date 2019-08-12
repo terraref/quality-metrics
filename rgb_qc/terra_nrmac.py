@@ -53,7 +53,6 @@ def getImageQuality(imgfile):
     #img = Image.open(imgfile)
     #img = np.array(img)
     img = np.rollaxis(gdal.Open(imgfile).ReadAsArray().astype(np.uint8), 0, 3)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     NRMAC = MAC(img, img, img)
     return NRMAC
 
