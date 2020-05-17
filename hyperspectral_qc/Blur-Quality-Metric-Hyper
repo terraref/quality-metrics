@@ -20,8 +20,8 @@ def BlurMetric(im):
     h, v, c = im.shape
     im = np.reshape(im, (h, v))
     # blur kernels
-    kernel_v = np.ones((1, 9),np.float32)/9
-    kernel_h = np.transpose(kernel_v)
+    kernel_h = np.ones((1, 9),np.float32)/9
+    kernel_v = np.transpose(kernel_v)
     
     # filtering
     bv_im = scipy.ndimage.correlate(im, kernel_v, mode='constant') # blur from vertical direction
@@ -29,10 +29,10 @@ def BlurMetric(im):
     
     # compute variation
     Dv_im = np.absolute(im[:, 0:v-1] - im[:, 1:v])  # variation from vertical direction
-    Dh_im = np.absolute(im[0:h-1, :] - im[1:h, :])  # variation from orizontal direction
+    Dh_im = np.absolute(im[0:h-1, :] - im[1:h, :])  # variation from horizontal direction
     #
     D_bv_im = np.absolute(bv_im[:, 0:v-1] - bv_im[:, 1:v])  # variation from vertical direction
-    D_bh_im = np.absolute(bh_im[0:h-1,:] - bh_im[1:h, :])  # variation from orizontal direction
+    D_bh_im = np.absolute(bh_im[0:h-1,:] - bh_im[1:h, :])  # variation from horizontal direction
     # 
     D_v = Dv_im - D_bv_im
     D_w = Dh_im - D_bh_im
